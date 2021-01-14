@@ -14,7 +14,7 @@ provider "aws" {
 }
 
 provider "aws" {
-  alias = "aws-us-east-1"
+  alias  = "aws-us-east-1"
   region = "us-east-1"
 }
 
@@ -32,7 +32,7 @@ resource "aws_route53_zone" "blog" {
 }
 
 resource "aws_acm_certificate" "cert_eu" {
-  domain_name       = "${var.blog_domain}."
+  domain_name       = var.blog_domain
   validation_method = "DNS"
   subject_alternative_names = [
     "*.${var.blog_domain}",
@@ -40,8 +40,8 @@ resource "aws_acm_certificate" "cert_eu" {
 }
 
 resource "aws_acm_certificate" "cert" {
-  provider = aws.aws-us-east-1
-  domain_name       = "${var.blog_domain}."
+  provider          = aws.aws-us-east-1
+  domain_name       = var.blog_domain
   validation_method = "DNS"
   subject_alternative_names = [
     "*.${var.blog_domain}",
@@ -50,16 +50,16 @@ resource "aws_acm_certificate" "cert" {
 
 resource "aws_route53_record" "cert_validation" {
   provider = aws.aws-us-east-1
-  name    = aws_acm_certificate.cert.domain_validation_options[0].resource_record_name
-  type    = aws_acm_certificate.cert.domain_validation_options[0].resource_record_type
-  zone_id = aws_route53_zone.blog.zone_id
+  name     = tolist(aws_acm_certificate.cert.domain_validation_options)[0].resource_record_name
+  type     = tolist(aws_acm_certificate.cert.domain_validation_options)[0].resource_record_type
+  zone_id  = aws_route53_zone.blog.zone_id
   records = [
-  aws_acm_certificate.cert.domain_validation_options[0].resource_record_value]
+  tolist(aws_acm_certificate.cert.domain_validation_options)[0].resource_record_value]
   ttl = 60
 }
 
 resource "aws_acm_certificate_validation" "cert" {
-  provider = aws.aws-us-east-1
+  provider        = aws.aws-us-east-1
   certificate_arn = aws_acm_certificate.cert.arn
   validation_record_fqdns = [
   aws_route53_record.cert_validation.fqdn]
@@ -77,11 +77,18 @@ resource "aws_cloudfront_origin_access_identity" "blog" {
 
 resource "aws_cloudfront_distribution" "blog" {
   origin {
-    domain_name = aws_s3_bucket.blog.bucket_domain_name
+    domain_name = aws_s3_bucket.blog.website_endpoint
     origin_id   = "service-s3-${var.blog_domain}"
-
-    s3_origin_config {
-      origin_access_identity = aws_cloudfront_origin_access_identity.blog.cloudfront_access_identity_path
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "http-only"
+      origin_read_timeout    = 30
+      origin_ssl_protocols = [
+        "TLSv1",
+        "TLSv1.1",
+        "TLSv1.2",
+      ]
     }
   }
 
@@ -156,10 +163,10 @@ resource "aws_route53_record" "a" {
 }
 
 resource "aws_route53_record" "mx" {
-  name            = var.blog_domain
-  ttl             = 300
-  type            = "MX"
-  zone_id         = aws_route53_zone.blog.zone_id
+  name    = var.blog_domain
+  ttl     = 300
+  type    = "MX"
+  zone_id = aws_route53_zone.blog.zone_id
 
   records = [
     "10 in1-smtp.messagingengine.com",
@@ -168,10 +175,10 @@ resource "aws_route53_record" "mx" {
 }
 
 resource "aws_route53_record" "txt" {
-  name            = var.blog_domain
-  ttl             = 300
-  type            = "TXT"
-  zone_id         = aws_route53_zone.blog.zone_id
+  name    = var.blog_domain
+  ttl     = 300
+  type    = "TXT"
+  zone_id = aws_route53_zone.blog.zone_id
 
   records = [
     "v=spf1 include:spf.messagingengine.com ?all",
@@ -179,10 +186,10 @@ resource "aws_route53_record" "txt" {
 }
 
 resource "aws_route53_record" "cname_1" {
-  name            = "fm1._domainkey"
-  ttl             = 300
-  type            = "CNAME"
-  zone_id         = aws_route53_zone.blog.zone_id
+  name    = "fm1._domainkey"
+  ttl     = 300
+  type    = "CNAME"
+  zone_id = aws_route53_zone.blog.zone_id
 
   records = [
     "fm1.${var.blog_domain}.dkim.fmhosted.com",
@@ -190,10 +197,10 @@ resource "aws_route53_record" "cname_1" {
 }
 
 resource "aws_route53_record" "cname_2" {
-  name            = "fm2._domainkey"
-  ttl             = 300
-  type            = "CNAME"
-  zone_id         = aws_route53_zone.blog.zone_id
+  name    = "fm2._domainkey"
+  ttl     = 300
+  type    = "CNAME"
+  zone_id = aws_route53_zone.blog.zone_id
 
   records = [
     "fm2.${var.blog_domain}.dkim.fmhosted.com",
@@ -201,10 +208,10 @@ resource "aws_route53_record" "cname_2" {
 }
 
 resource "aws_route53_record" "cname_3" {
-  name            = "fm3._domainkey"
-  ttl             = 300
-  type            = "CNAME"
-  zone_id         = aws_route53_zone.blog.zone_id
+  name    = "fm3._domainkey"
+  ttl     = 300
+  type    = "CNAME"
+  zone_id = aws_route53_zone.blog.zone_id
 
   records = [
     "fm3.${var.blog_domain}.dkim.fmhosted.com",
